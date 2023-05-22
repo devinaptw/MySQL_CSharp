@@ -23,6 +23,7 @@ namespace PremierLeague
         string constring = "Server=" + server + "; database=" + database + "; uid=" + uid + "; pwd=" + password + "; Allow Zero Datetime=True;";
         string[,] n_id = new string[50, 50];
         string[,] t_id = new string[50, 50];
+        string id_selected = "0";
         int jml_tim = 0, jml_nat = 0;
         DataTable dbdataset = new DataTable();
 
@@ -129,7 +130,45 @@ namespace PremierLeague
 
         private void comboBox4_SelectedValueChanged(object sender, EventArgs e)
         {
+            string Team = "";
+            string Team_ID = "";
+            // convert team name to team_id
+            if (comboBox4.SelectedItem != null)
+            {
+                Team = comboBox4.SelectedItem.ToString();
+                for (int i = 0; i < jml_tim; i++)
+                {
+                    if (t_id[1, i] == Team)
+                    {
+                        Team_ID = t_id[0, i];
+                    }
+                }
+            }
 
+            MySqlConnection con = new MySqlConnection(constring);
+            MySqlCommand cmd = new MySqlCommand("SELECT player_data.id, player_data.name, player_data.playing_position, player_data.height, player_data.weight, player_data.birthdate, team.team_name as 'Team Name', nationality.nationality_name as 'Nationality' FROM `player_data` INNER JOIN team ON player_data.team_id = team.team_id INNER JOIN nationality ON player_data.nationality_id = nationality.nationality_id WHERE player_data.not_deleted = '1' AND player_data.team_id = '" + Team_ID + "';", con);
+            try
+            {
+                MySqlDataAdapter sda = new MySqlDataAdapter();
+                dbdataset.Clear();
+                sda.SelectCommand = cmd;
+                sda.Fill(dbdataset);
+                BindingSource bSource = new BindingSource();
+
+                bSource.DataSource = dbdataset;
+                dataGridView2.DataSource = bSource;
+                dataGridView2.Columns["team_id"].Visible = false;
+                dataGridView2.Columns["nationality_id"].Visible = false;
+                dataGridView2.Columns["team_name"].Visible = false;
+                dataGridView2.Columns["nationality_name"].Visible = false;
+                dataGridView2.Columns["birthdate"].ReadOnly = true;
+                dataGridView2.Columns["id"].ReadOnly = true;
+                sda.Update(dbdataset);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -190,13 +229,36 @@ namespace PremierLeague
 
         private void button3_Click(object sender, EventArgs e)
         {
-
+            using (MySqlConnection con = new MySqlConnection(constring))
+            {
+                try
+                {
+                    con.Open();
+                    MessageBox.Show(id_selected);
+                    string query = "UPDATE `player_data` SET `not_deleted`='0' WHERE `id`='" + id_selected + "'";
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        MySqlDataReader reader = cmd.ExecuteReader();
+                    }
+                    MessageBox.Show("Data Dihapus");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
         }
 
         private void dataGridView1_DataError(object sender, DataGridViewDataErrorEventArgs e)
         {
             dataGridView1.Rows[e.RowIndex].ErrorText = "Concisely describe the error and how to fix it";
             e.Cancel = true;
+        }
+
+        private void dataGridView2_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            int rowIndex = e.RowIndex;
+            id_selected = dataGridView2.Rows[rowIndex].Cells["id"].Value.ToString();
         }
 
         private void button1_Click(object sender, EventArgs e)
